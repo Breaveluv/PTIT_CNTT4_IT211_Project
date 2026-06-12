@@ -6,6 +6,8 @@ import com.example.prj.model.dto.request.RegisterRequest;
 import com.example.prj.model.entity.Role;
 import com.example.prj.model.entity.TokenBlacklist;
 import com.example.prj.model.entity.User;
+import com.example.prj.model.entity.PasswordResetToken; // Import mới
+import com.example.prj.repository.PasswordResetTokenRepository; // Import mới
 import com.example.prj.repository.TokenBlacklistRepository;
 import com.example.prj.repository.UserRepository;
 import com.example.prj.security.JwtService;
@@ -15,8 +17,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Import mới
 
 import java.time.LocalDateTime;
+import java.util.UUID; // Import mới
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class AuthService {
 
     private final UserRepository repository;
     private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository; // Inject mới
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -74,6 +79,7 @@ public class AuthService {
         throw new RuntimeException("Invalid refresh token");
     }
 
+    @Transactional
     public void logout(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -88,5 +94,40 @@ public class AuthService {
             tokenBlacklistRepository.save(blacklist);
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @Transactional
+    public String createPasswordResetToken(String username) {
+        User user = repository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+
+        // Xóa các token cũ của user này để tránh spam
+        passwordResetTokenRepository.deleteByUser(user);
+
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusHours(1)) // Token hết hạn sau 1 giờ
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+        return token;
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired reset token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            passwordResetTokenRepository.delete(resetToken); // Xóa token hết hạn
+            throw new RuntimeException("Reset token has expired");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        repository.save(user); // Cập nhật mật khẩu mới
+
+        passwordResetTokenRepository.delete(resetToken); // Vô hiệu hóa token sau khi sử dụng
     }
 }

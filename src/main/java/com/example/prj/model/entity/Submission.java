@@ -28,6 +28,8 @@ public class Submission {
     @JoinColumn(name = "lecturer_id")
     private User lecturer;
 
+    private String githubRepoUrl;
+
     private String reportUrl;
     
     private Double score;

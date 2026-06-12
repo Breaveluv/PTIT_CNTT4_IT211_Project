@@ -6,4 +6,6 @@ import java.util.Optional;
 
 public interface TokenBlacklistRepository extends JpaRepository<TokenBlacklist, Long> {
     Optional<TokenBlacklist> findByTokenString(String tokenString);
+
+    boolean existsByTokenString(String tokenString);
 }

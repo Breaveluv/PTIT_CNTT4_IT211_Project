@@ -1,12 +1,14 @@
 package com.example.prj.controller;
 
 import com.example.prj.model.dto.response.UserResponse;
+import com.example.prj.model.dto.request.UserUpdateRequest;
 import com.example.prj.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,18 +20,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
-class rAdminUserControllerTest {
+@ExtendWith(MockitoExtension.class)
+class AdminUserControllerTest {
 
     @Mock
     private UserService userService;
 
     @InjectMocks
     private AdminUserController adminUserController;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     @Test
     void getAllUsers_Success() {
@@ -79,7 +77,7 @@ class rAdminUserControllerTest {
         UserResponse response = UserResponse.builder().id(1L).fullName("New Name").build();
         when(userService.updateUser(eq(1L), any())).thenReturn(response);
 
-        var result = adminUserController.updateUser(1L, any());
+        var result = adminUserController.updateUser(1L, UserUpdateRequest.builder().build());
 
         assertEquals(200, result.getStatusCode().value());
         assertEquals("New Name", result.getBody().getData().getFullName());
