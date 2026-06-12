@@ -20,8 +20,13 @@ public class TokenBlacklist {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(length = 512, unique = true, nullable = false)
+    // Keep tokenString for compatibility/migration; prefer storing tokenHash instead of plaintext
+    @Column(length = 512, unique = true)
     private String tokenString;
+
+    // Store SHA-256(token) to avoid keeping JWT plaintext in the database
+    @Column(length = 64, unique = true)
+    private String tokenHash;
 
     private LocalDateTime revokedAt;
 }

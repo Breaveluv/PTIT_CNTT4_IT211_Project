@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import io.jsonwebtoken.JwtException;
+import com.example.prj.util.TokenUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -39,12 +41,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String jwt = authHeader.substring(7);
 
-        if (tokenBlacklistRepository.existsByTokenString(jwt)) {
+        // Check blacklist by hashed token (if tokens are stored hashed)
+        String jwtHash = TokenUtils.sha256Hex(jwt);
+        if (tokenBlacklistRepository.existsByTokenHash(jwtHash) || tokenBlacklistRepository.existsByTokenString(jwt)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has been revoked");
             return;
         }
 
-        final String username = jwtService.extractUsername(jwt);
+        final String username;
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (JwtException | IllegalArgumentException ex) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+            return;
+        }
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
             if (jwtService.isTokenValid(jwt, userDetails)) {

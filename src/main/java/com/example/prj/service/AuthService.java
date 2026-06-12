@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional; // Import mới
 
 import java.time.LocalDateTime;
 import java.util.UUID; // Import mới
+import com.example.prj.util.TokenUtils; // for hashing tokens
 
 @Service
 @RequiredArgsConstructor
@@ -85,9 +86,12 @@ public class AuthService {
             String token = authHeader.substring(7);
             String username = jwtService.extractUsername(token);
             User user = repository.findByUsername(username).orElseThrow();
-            
+            // store only the hash of the token to avoid keeping plaintext JWTs in the DB
+            String tokenHash = TokenUtils.sha256Hex(token);
+
             TokenBlacklist blacklist = TokenBlacklist.builder()
-                    .tokenString(token)
+                    .tokenString(null)
+                    .tokenHash(tokenHash)
                     .user(user)
                     .revokedAt(LocalDateTime.now())
                     .build();
